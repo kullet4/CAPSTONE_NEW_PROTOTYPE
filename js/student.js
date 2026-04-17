@@ -39,7 +39,12 @@ onAuthStateChanged(auth, async (user) => {
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists() && userDoc.data().role === 'student') {
                 const userData = userDoc.data();
-                userGreeting.textContent = `Hello, ${userData.name || 'Student'}`;
+                const studentName = userData.name || 'Student';
+                
+                // Update UI greetings
+                userGreeting.textContent = studentName;
+                const mainGreetingName = document.getElementById('main-greeting-name');
+                if(mainGreetingName) mainGreetingName.textContent = studentName.split(' ')[0]; // Just use first name for bubbly feel
                 
                 const studentGrade = userData.gradeLevel || 'Grade 1'; // Default
                 const studentSection = userData.section || 'All';

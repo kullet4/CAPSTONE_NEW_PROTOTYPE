@@ -12,32 +12,36 @@ const authSection = document.getElementById('auth-section');
 // Render Login Form
 function renderLoginForm() {
     authSection.innerHTML = `
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <h3 class="card-title mb-4">Login</h3>
-                <form id="auth-form">
-                    <div class="mb-3 text-start">
-                        <label for="email" class="form-label">Email address</label>
-                        <input type="email" class="form-control" id="email" required>
-                    </div>
-                    <div class="mb-3 text-start">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" required>
-                    </div>
-                    <div id="login-error" class="text-danger mb-3 d-none"></div>
-                    <div id="reset-success" class="text-success small mb-3 d-none">Password reset email sent! Check your inbox.</div>
-                    
-                    <button id="login-submit-btn" type="submit" class="btn btn-primary w-100 mb-2">Sign In</button>
-                    <button type="button" id="forgot-password-btn" class="btn btn-link text-decoration-none small text-muted w-100" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</button>
-                </form>
-
-                <hr class="my-4">
-                <h6 class="text-muted mb-3">Quick Demo Access</h6>
-                <div class="d-grid gap-2 d-md-flex justify-content-md-center">
-                    <button type="button" id="demo-student" class="btn btn-sm btn-outline-primary">🎓 Student</button>
-                    <button type="button" id="demo-teacher" class="btn btn-sm btn-outline-success">📝 Teacher</button>
-                    <button type="button" id="demo-admin" class="btn btn-sm btn-outline-dark">🛡️ Admin</button>
+        <div class="bubbly-card mx-auto p-3 p-sm-4 p-md-5" style="max-width: 420px;">
+            <div class="mb-4">
+                <h2 class="text-dark fw-bold mb-1 fs-3 fs-md-2">Log in! 👋</h2>
+                <p class="text-muted fw-bold small fs-sm-6">Ready to learn and play?</p>
+            </div>
+            
+            <form id="auth-form">
+                <div class="mb-3 text-start">
+                    <input type="email" class="form-control bubbly-input w-100 fs-6" id="email" placeholder="Email Address" required>
                 </div>
+                <div class="mb-3 text-start">
+                    <input type="password" class="form-control bubbly-input w-100 fs-6" id="password" placeholder="Password" required>
+                </div>
+                
+                <div id="login-error" class="text-danger fw-bold mb-3 d-none bg-danger bg-opacity-10 p-2 rounded-3 text-center small"></div>
+                <div id="reset-success" class="text-success fw-bold small mb-3 d-none bg-success bg-opacity-10 p-2 rounded-3 text-center">Password reset email sent!</div>
+                
+                <button id="login-submit-btn" type="submit" class="btn-duo-primary fs-5 mt-2">Let's Go! 🚀</button>
+                <div class="text-center mt-3">
+                    <button type="button" id="forgot-password-btn" class="btn btn-link text-decoration-none fw-bold text-secondary small p-0" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">I forgot my password!</button>
+                </div>
+            </form>
+
+            <hr class="my-4" style="border-top: 3px dashed #e6e6e6; opacity: 1;">
+            
+            <h6 class="text-secondary fw-bold text-center mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Quick Demo Shortcuts</h6>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                <button type="button" id="demo-student" class="btn btn-light fw-bold text-primary rounded-pill border-2 border-primary border px-3 py-1 text-nowrap flex-grow-1 flex-sm-grow-0" style="font-size: 0.9rem;">🎓 Student</button>
+                <button type="button" id="demo-teacher" class="btn btn-light fw-bold text-success rounded-pill border-2 border-success border px-3 py-1 text-nowrap flex-grow-1 flex-sm-grow-0" style="font-size: 0.9rem;">📝 Teacher</button>
+                <button type="button" id="demo-admin" class="btn btn-light fw-bold text-dark rounded-pill border-2 border-dark border px-3 py-1 text-nowrap flex-grow-1 flex-sm-grow-0" style="font-size: 0.9rem;">🛡️ Admin</button>
             </div>
         </div>
     `;
@@ -119,34 +123,17 @@ async function routeUserBasedOnRole(user, retryCount = 0) {
             const userData = userDocSnap.data();
             const role = userData.role || 'unassigned';
 
-            let dashboardHTML = `
-                <div class="card shadow-sm mt-4">
-                    <div class="card-body p-4">
-                        <h2>Welcome back, ${userData.name || user.email}!</h2>
-                        <p class="lead text-muted">Role: <span class="badge bg-info text-dark">${role.toUpperCase()}</span></p>
-                        <hr>
-                        <div id="dashboard-content"></div>
-                        <button id="logout-btn" class="btn btn-outline-danger mt-3">Log Out</button>
-                    </div>
-                </div>
-            `;
-            authSection.innerHTML = dashboardHTML;
-
-            // Simple routing
-            const dashboardContent = document.getElementById('dashboard-content');
+            // Automatic seamless routing
             if (role === 'student') {
-                dashboardContent.innerHTML = `<a href="student-dashboard.html" class="btn btn-success">Go to Student Dashboard</a>`;
+                window.location.replace('student-dashboard.html');
             } else if (role === 'teacher') {
-                dashboardContent.innerHTML = `<a href="teacher-dashboard.html" class="btn btn-success">Go to Teacher Dashboard</a>`;
+                window.location.replace('teacher-dashboard.html');
             } else if (role === 'admin') {
-                dashboardContent.innerHTML = `<a href="admin-dashboard.html" class="btn btn-success">Go to Admin Dashboard</a>`;
+                window.location.replace('admin-dashboard.html');
             } else {
-                 dashboardContent.innerHTML = `<p class="text-danger">Role is unassigned or misspelled in the database.</p>`;
+                authSection.innerHTML = `<div class="card p-4 mt-4"><p class="text-danger mb-3 fw-bold">Error: Role is unassigned or misspelled.</p><button id="logout-btn" class="btn btn-outline-danger">Log Out</button></div>`;
+                document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
             }
-
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                signOut(auth);
-            });
             
         } else {
             if (retryCount < 3) {

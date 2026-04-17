@@ -19,7 +19,11 @@ onAuthStateChanged(auth, async (user) => {
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists() && userDoc.data().role === 'teacher') {
                 currentUserDoc = userDoc.data();
-                userGreeting.textContent = `Welcome, Teacher ${currentUserDoc.name || 'User'}`;
+                const teacherName = currentUserDoc.name || 'User';
+                userGreeting.textContent = teacherName; // Simple top right name
+                
+                const mainGreetingName = document.getElementById('main-greeting-name');
+                if(mainGreetingName) mainGreetingName.textContent = teacherName.split(' ')[0]; // Big Gemini style "Hi [Name]"
                 
                 // Initialize Real-Time Tracking
                 monitorStudentsRealTime();

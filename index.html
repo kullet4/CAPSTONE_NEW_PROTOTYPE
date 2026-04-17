@@ -11,15 +11,28 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
 </head>
-<body>
-    <div class="container mt-5" id="app-container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 text-center">
-                <h1>Welcome to E-LMS</h1>
-                <p class="lead">Empowering Learners through Competence, Autonomy, and Relatedness.</p>
-                <div id="auth-section" class="mt-4">
-                    <!-- Login Form placeholder -->
-                    <p>Loading Authentication...</p>
+<body class="bg-light">
+    <!-- Landing / Login Page wrapper -->
+    <div class="landing-bg">
+        <div class="container px-3 px-sm-4" id="app-container">
+            <div class="row justify-content-center align-items-center">
+                <div class="col-12 col-sm-10 col-md-8 col-lg-5 text-center mt-3 mt-md-0">
+                    
+                    <!-- Fun Welcome Header -->
+                    <div class="mb-3 mb-md-4">
+                        <div class="d-inline-flex justify-content-center align-items-center bg-white rounded-circle shadow-sm mb-3" style="width: 80px; height: 80px; width: clamp(80px, 15vw, 100px); height: clamp(80px, 15vw, 100px);">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3048/3048505.png" alt="Mascot Logo" class="opacity-75" style="width: 60%; height: auto;">
+                        </div>
+                        <h1 class="display-3 fw-bold text-white mb-1" style="text-shadow: 0 4px 0 rgba(0,0,0,0.1); font-size: clamp(3rem, 10vw, 4.5rem);">E-LMS</h1>
+                        <p class="h4 text-white fw-bold mb-3 mb-md-4" style="text-shadow: 0 2px 0 rgba(0,0,0,0.1); font-size: clamp(1.2rem, 4vw, 1.5rem);">Your Fun Learning Adventure Begins! 🌟</p>
+                    </div>
+
+                    <div id="auth-section" class="mt-2 mt-md-4 w-100 mx-auto">
+                        <!-- Login Form placeholder -->
+                        <div class="spinner-border text-white" role="status"></div>
+                        <p class="text-white mt-2 fw-bold">Loading awesomeness...</p>
+                    </div>
+                    
                 </div>
             </div>
         </div>
