@@ -1,10 +1,25 @@
 import { auth, db } from './firebase-config.js';
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { doc, getDoc, collection, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { firebaseConfig } from './firebase-config.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+import { getAuth as getSecondaryAuth, createUserWithEmailAndPassword, signOut as secondarySignOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { onAuthStateChanged, signOut as primarySignOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { doc, getDoc, setDoc, collection, deleteDoc, onSnapshot, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+// Initialize a secondary Firebase instance purely for creating users, securely bypassing the main Auth state switch
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryAppForAdminCreates");
+const secondaryAuth = getSecondaryAuth(secondaryApp);
 
 // DOM Elements
 const userGreeting = document.getElementById('user-greeting');
 const logoutBtn = document.getElementById('logout-btn');
+
+// Edit User Modal Elements
+const editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+const editUserForm = document.getElementById('edit-user-form');
+const editUserId = document.getElementById('edit-user-id');
+const editUserGrade = document.getElementById('edit-user-grade');
+const editUserSection = document.getElementById('edit-user-section');
+const saveUserBtn = document.getElementById('save-user-btn');
 
 // KPI Elements
 const kpiUsers = document.getElementById('kpi-users');
@@ -15,6 +30,83 @@ const kpiModules = document.getElementById('kpi-modules');
 // Table Bodys
 const usersList = document.getElementById('users-list');
 const modulesList = document.getElementById('modules-list');
+
+// Create User Modal Elements
+const createUserForm = document.getElementById('create-user-form');
+const newRoleSelect = document.getElementById('new-user-role');
+const studentOnlyFields = document.getElementById('student-only-fields');
+
+// Handle displaying extra fields in modal based on role
+newRoleSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'student') {
+        studentOnlyFields.classList.remove('d-none');
+    } else {
+        studentOnlyFields.classList.add('d-none');
+    }
+});
+
+// Form Submit: Create New User without logging Admin out
+createUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('new-user-email').value;
+    const pwd = document.getElementById('new-user-pwd').value;
+    const name = document.getElementById('new-user-name').value;
+    const role = document.getElementById('new-user-role').value;
+    
+    const errorDiv = document.getElementById('create-user-error');
+    const successDiv = document.getElementById('create-user-success');
+    const submitBtn = document.getElementById('submit-new-user-btn');
+
+    try {
+        errorDiv.classList.add('d-none');
+        successDiv.classList.add('d-none');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating...';
+
+        // 1. Create Auth entity in SECONDARY app to bypass Auth State Change on the primary app
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, pwd);
+        const newUid = userCredential.user.uid;
+
+        // 2. Clear Secondary session immediately so it doesn't stay cached
+        await secondarySignOut(secondaryAuth);
+        
+        // 3. Inject new user into Firestore via primary Admin permissions
+        const userData = {
+            email: email,
+            name: name,
+            role: role,
+            createdAt: new Date().toISOString()
+        };
+        
+        if(role === 'student') {
+            userData.xp = 0;
+            userData.completedModules = [];
+            userData.gradeLevel = document.getElementById('new-user-grade').value || 'Grade 1';
+            userData.section = document.getElementById('new-user-section').value || 'All';
+        }
+        
+        // Write it!
+        await setDoc(doc(db, "users", newUid), userData);
+        
+        // Let Admin know
+        successDiv.classList.remove('d-none');
+        createUserForm.reset();
+        
+        // Reset student-field blocker
+        newRoleSelect.value = 'student';
+        studentOnlyFields.classList.remove('d-none');
+
+        setTimeout(() => successDiv.classList.add('d-none'), 3000);
+
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('d-none');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Create User Account';
+    }
+});
 
 // Enforce authentication & role
 onAuthStateChanged(auth, async (user) => {
@@ -42,7 +134,7 @@ onAuthStateChanged(auth, async (user) => {
 
 // Logout Handler
 logoutBtn.addEventListener('click', () => {
-    signOut(auth).then(() => {
+    primarySignOut(auth).then(() => {
         window.location.href = 'index.html';
     });
 });
@@ -72,11 +164,30 @@ function loadSystemData() {
 
             // Render Table Row
             let roleBadge = '';
-            if(userData.role === 'admin') roleBadge = `<span class="badge bg-dark">Admin</span>`;
-            else if(userData.role === 'teacher') roleBadge = `<span class="badge bg-info text-dark">Teacher</span>`;
-            else roleBadge = `<span class="badge bg-primary">Student</span>`;
-            
-            let stats = userData.role === 'student' ? `${userData.xp || 0} XP` : 'N/A';
+            let stats = '';
+            let actionBtn = `<button class="btn btn-sm btn-outline-secondary" disabled title="No Action Available"><i class="bi bi-slash-circle"></i></button>`;
+
+            if(userData.role === 'admin') {
+                roleBadge = `<span class="badge bg-dark">Admin</span>`;
+                stats = 'N/A';
+            } else if(userData.role === 'teacher') {
+                roleBadge = `<span class="badge bg-info text-dark">Teacher</span>`;
+                stats = 'Content Creator';
+            } else {
+                roleBadge = `<span class="badge bg-primary">Student</span>`;
+                const gLvl = userData.gradeLevel || 'Grade 1';
+                const sec = userData.section || 'All';
+                stats = `${userData.xp || 0} XP | ${gLvl}-${sec}`;
+                
+                // Admin can edit grade/section for student
+                actionBtn = `<button class="btn btn-sm btn-outline-primary edit-student-btn" 
+                                data-id="${id}" 
+                                data-grade="${gLvl}" 
+                                data-section="${sec}"
+                                title="Edit Grade/Section">
+                                <i class="bi bi-pencil-square"></i> Edit
+                             </button>`;
+            }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -84,12 +195,26 @@ function loadSystemData() {
                 <td>${roleBadge}</td>
                 <td class="text-muted"><small>${stats}</small></td>
                 <td class="text-end pe-4">
-                    <button class="btn btn-sm btn-outline-secondary" title="View/Edit" disabled>
-                        <i class="bi bi-pencil"></i>
-                    </button>
+                    ${actionBtn}
                 </td>
             `;
             usersList.appendChild(tr);
+        });
+
+        // Add event listeners for edit buttons
+        document.querySelectorAll('.edit-student-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                const userId = button.getAttribute('data-id');
+                const grade = button.getAttribute('data-grade');
+                const section = button.getAttribute('data-section');
+                
+                editUserId.value = userId;
+                editUserGrade.value = grade;
+                editUserSection.value = section === 'All' ? '' : section;
+                
+                editUserModal.show();
+            });
         });
 
         // Update User KPIs
@@ -143,7 +268,31 @@ function loadSystemData() {
     });
 }
 
-// Delete Module Function
+// Handle Saving Edited Student Info
+editUserForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userId = editUserId.value;
+    const gradeLevel = editUserGrade.value;
+    const section = editUserSection.value || 'All';
+    
+    try {
+        saveUserBtn.disabled = true;
+        saveUserBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+        
+        await updateDoc(doc(db, "users", userId), {
+            gradeLevel: gradeLevel,
+            section: section
+        });
+        
+        editUserModal.hide();
+    } catch (error) {
+        console.error("Error updating user:", error);
+        alert('Failed to update student info.');
+    } finally {
+        saveUserBtn.disabled = false;
+        saveUserBtn.innerHTML = 'Save Changes';
+    }
+});
 async function deleteModule(moduleId) {
     if(confirm("Are you sure you want to permanently delete this instructional material? This cannot be undone.")) {
         try {

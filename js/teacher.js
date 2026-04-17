@@ -42,6 +42,9 @@ createModuleForm.addEventListener('submit', async (e) => {
     
     const title = document.getElementById('module-title').value;
     const desc = document.getElementById('module-desc').value;
+    const contentText = document.getElementById('module-content').value;
+    const gradeLevel = document.getElementById('module-grade').value;
+    const section = document.getElementById('module-section').value || 'All';
     const xp = parseInt(document.getElementById('module-xp').value, 10);
     const submitBtn = createModuleForm.querySelector('button[type="submit"]');
 
@@ -52,6 +55,9 @@ createModuleForm.addEventListener('submit', async (e) => {
         await addDoc(collection(db, "modules"), {
             title: title,
             description: desc,
+            content: contentText,
+            targetGrade: gradeLevel,
+            targetSection: section,
             xpReward: xp,
             teacherId: auth.currentUser.uid,
             teacherName: currentUserDoc.name || 'Instructor',
@@ -87,7 +93,7 @@ function monitorStudentsRealTime() {
         studentCountBadge.textContent = snapshot.size;
 
         if (snapshot.empty) {
-            studentListId.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No students enrolled yet.</td></tr>`;
+            studentListId.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No students enrolled yet.</td></tr>`;
             return;
         }
 
@@ -95,6 +101,8 @@ function monitorStudentsRealTime() {
             const student = docSnap.data();
             const studentId = docSnap.id;
             const xp = student.xp || 0;
+            const gLvl = student.gradeLevel || 'Unknown';
+            const sec = student.section || 'N/A';
             
             // Determine status based loosely on XP progression logic
             let statusBadge = '';
@@ -109,6 +117,7 @@ function monitorStudentsRealTime() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="ps-4 fw-medium">${student.name || student.email || 'Anonymous Student'}</td>
+                <td class="text-muted"><small>${gLvl} - ${sec}</small></td>
                 <td><i class="bi bi-star-fill text-warning"></i> ${xp}</td>
                 <td>${statusBadge}</td>
                 <td class="text-end pe-4">

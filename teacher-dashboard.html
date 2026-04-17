@@ -52,7 +52,36 @@
                             </div>
                             <div class="mb-3">
                                 <label for="module-desc" class="form-label text-muted">Description / Objectives</label>
-                                <textarea class="form-control" id="module-desc" rows="3" required placeholder="Describe the learning outcomes..."></textarea>
+                                <textarea class="form-control" id="module-desc" rows="2" required placeholder="Describe the learning outcomes..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="module-content" class="form-label text-primary fw-bold">📚 Lesson Content (The Reading Material)</label>
+                                <textarea class="form-control border-primary bg-light" id="module-content" rows="4" required placeholder="Write the actual lesson here. Separate sentences with periods. The student will read this piece by piece!"></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="module-grade" class="form-label text-muted">Target Grade Level</label>
+                                    <select class="form-select" id="module-grade" required>
+                                        <option value="" disabled selected>Select Grade</option>
+                                        <option value="Grade 1">Grade 1</option>
+                                        <option value="Grade 2">Grade 2</option>
+                                        <option value="Grade 3">Grade 3</option>
+                                        <option value="Grade 4">Grade 4</option>
+                                        <option value="Grade 5">Grade 5</option>
+                                        <option value="Grade 6">Grade 6</option>
+                                        <option value="All Grades">All Grades</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="module-section" class="form-label text-muted">Target Section</label>
+                                    <select class="form-select" id="module-section" required>
+                                        <option value="All">All Sections</option>
+                                        <option value="Section A">Section A</option>
+                                        <option value="Section B">Section B</option>
+                                        <option value="Section C">Section C</option>
+                                        <option value="Section D">Section D</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="module-xp" class="form-label text-muted">XP Reward (Upon Completion)</label>
@@ -81,15 +110,16 @@
                                 <thead class="table-light text-muted">
                                     <tr>
                                         <th scope="col" class="ps-4">Student Name</th>
+                                        <th scope="col">Grade & Sec</th>
                                         <th scope="col">Total XP</th>
-                                        <th scope="col">Current Status</th>
+                                        <th scope="col">Status</th>
                                         <th scope="col" class="text-end pe-4">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="student-monitoring-list">
                                     <!-- Students will be injected here via JS (onSnapshot) -->
                                     <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">
+                                        <td colspan="5" class="text-center py-4 text-muted">
                                             <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading classroom data...
                                         </td>
                                     </tr>

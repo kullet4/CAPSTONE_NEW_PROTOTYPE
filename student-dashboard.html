@@ -45,6 +45,10 @@
                 <div class="card shadow-sm border-0 mb-4 bg-gradient-primary text-white" style="background: linear-gradient(135deg, #0d6efd, #0dcaf0);">
                     <div class="card-body p-4 d-flex justify-content-between align-items-center">
                         <div>
+                            <div class="mb-2">
+                                <span class="badge bg-light text-primary border border-primary" id="student-grade-badge">Grade -</span>
+                                <span class="badge bg-light text-info border border-info ms-1" id="student-section-badge">Section -</span>
+                            </div>
                             <h4 class="mb-0">Your Progress</h4>
                             <p class="mb-0 opacity-75">Keep up the great work!</p>
                         </div>
@@ -59,17 +63,8 @@
                 <h5 class="mb-3 text-secondary">My Learning Paths <i class="bi bi-compass"></i></h5>
                 <div class="row g-3 mb-4" id="learning-modules">
                     <!-- Modules will be loaded here dynamically -->
-                    <div class="col-md-6">
-                        <div class="card shadow-sm border-0 h-100 module-card">
-                            <div class="card-body">
-                                <h6>Introduction to Biology</h6>
-                                <div class="progress mb-2" style="height: 10px;">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <small class="text-muted">25% Completed</small>
-                                <button class="btn btn-sm btn-outline-primary w-100 mt-3 disabled">Available Soon</button>
-                            </div>
-                        </div>
+                    <div class="col-12 text-center text-muted py-4">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading available modules...
                     </div>
                 </div>
 
@@ -111,6 +106,46 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Interactive Lesson Modal (The gamified reading environment) -->
+    <div class="modal fade" id="lessonModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 1.5rem; overflow: hidden;">
+                <!-- Decorative top bar -->
+                <div class="bg-primary pt-2"></div>
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark" id="lessonModalTitle">Loading Lesson...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="close-lesson-btn"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <!-- Gamified Progress Bar -->
+                    <div class="progress mb-4 bg-light" style="height: 14px; border-radius: 1rem;">
+                        <div id="lesson-progress" class="progress-bar bg-warning progress-bar-striped progress-bar-animated" style="width: 0%; border-radius: 1rem;"></div>
+                    </div>
+                    
+                    <!-- Core Reading Content (Chunktified) -->
+                    <div class="card bg-light border-0 mb-4" style="border-radius: 1rem; overflow: hidden;">
+                        <div class="card-body py-5 position-relative" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                            <h3 id="lesson-chunk-text" class="text-dark fw-bold m-0 w-100" style="line-height: 1.6; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">Let's get started!</h3>
+                        </div>
+                    </div>
+
+                    <!-- Autonomy Interaction Buttons -->
+                    <div class="d-flex gap-2 w-100 justify-content-center" id="lesson-nav-buttons">
+                        <button id="lesson-back-btn" class="btn btn-outline-secondary btn-lg rounded-pill flex-fill shadow-sm d-none">
+                            👈 Back
+                        </button>
+                        <button id="lesson-next-btn" class="btn btn-primary btn-lg rounded-pill flex-fill shadow-sm">
+                            Read Next 👉
+                        </button>
+                    </div>
+                    <button id="lesson-finish-btn" class="btn btn-success btn-lg rounded-pill w-100 shadow-lg d-none mt-2" style="transform: scale(1.05);">
+                        🌟 Complete & Earn XP!
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

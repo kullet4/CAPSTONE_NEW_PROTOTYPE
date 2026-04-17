@@ -1,10 +1,73 @@
-/* Main Stylesheet for E-LMS */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+/* Main Stylesheet for E-LMS - Grade 1-6 Friendly Edition */
 body {
-    background-color: #f8f9fa;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f4f8; /* Softer, slightly blue-tinted background */
+    font-family: 'Nunito', sans-serif; /* Friendly, rounded, highly readable font */
+    color: #4a4a4a;
 }
 
 /* Enhancing Readability & Accessibility */
 h1, h2, h3, h4, h5, h6 {
-    color: #333;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+/* Global Elements styling to make them bouncy and kid-friendly */
+.card {
+    border-radius: 1rem; /* Soft, rounded corners on all cards */
+    border: none;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Add a slight hover float effect to cards for interactiveness */
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Buttons - Make them pill-shaped and fun to click */
+.btn {
+    border-radius: 50rem; /* Pill shape */
+    font-weight: 600;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.2s;
+}
+
+.btn:active {
+    transform: scale(0.95); /* Squish effect when clicked */
+}
+
+/* Specific styling for the Student Gamification UI */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+    border-radius: 1rem;
+}
+
+.badge-icon {
+    width: 60px;
+    height: 60px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy transition */
+}
+
+.badge-icon:hover {
+    transform: scale(1.15) rotate(5deg);
+}
+
+/* Progress bars chunky and fun */
+.progress {
+    border-radius: 1rem;
+    background-color: #e9ecef;
+}
+.progress-bar {
+    border-radius: 1rem;
+}
+
+/* Navigation Bars */
+.navbar {
+    border-bottom: 3px solid rgba(0, 0, 0, 0.05);
 }

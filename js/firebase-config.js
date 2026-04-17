@@ -4,7 +4,7 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth
 import { getFirestore, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCq85PKh7Mj0laokR-keEq9sovI6nHGkT4",
   authDomain: "elms-sdt-capstone.firebaseapp.com",
   projectId: "elms-sdt-capstone",

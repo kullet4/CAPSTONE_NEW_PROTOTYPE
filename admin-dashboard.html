@@ -80,6 +80,9 @@
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-header bg-white border-bottom pb-2 pt-3 d-flex justify-content-between align-items-center">
                         <h5 class="card-title text-dark mb-0"><i class="bi bi-people-fill text-primary"></i> System Users</h5>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                            <i class="bi bi-person-plus"></i> Create User
+                        </button>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
@@ -135,6 +138,115 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Create User Modal (Admin Tool) -->
+    <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark" id="createUserModalLabel"><i class="bi bi-person-plus-fill text-primary"></i> Create New User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-3 pb-4">
+                    <form id="create-user-form">
+                        <div class="mb-3">
+                            <label for="new-user-name" class="form-label text-muted">Full Name</label>
+                            <input type="text" class="form-control" id="new-user-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-user-email" class="form-label text-muted">Email Address</label>
+                            <input type="email" class="form-control" id="new-user-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-user-pwd" class="form-label text-muted">Temporary Password</label>
+                            <input type="password" class="form-control" id="new-user-pwd" required minlength="6" value="password123">
+                            <small class="text-muted">Defaults to 'password123'</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-user-role" class="form-label text-muted">System Role</label>
+                            <select class="form-select border-primary" id="new-user-role" required>
+                                <option value="student" selected>Student</option>
+                                <option value="teacher">Teacher</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Toggle extra fields if Student -->
+                        <div id="student-only-fields" class="row border-top pt-3 mt-3">
+                            <h6 class="text-primary fs-6 mb-3">Student Placement details</h6>
+                            <div class="col-6 mb-3">
+                                <label for="new-user-grade" class="form-label text-muted">Grade Level</label>
+                                <select class="form-select" id="new-user-grade">
+                                    <option value="Grade 1">Grade 1</option>
+                                    <option value="Grade 2">Grade 2</option>
+                                    <option value="Grade 3">Grade 3</option>
+                                    <option value="Grade 4">Grade 4</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
+                                </select>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="new-user-section" class="form-label text-muted">Section</label>
+                                <select class="form-select" id="new-user-section">
+                                    <option value="Section A">Section A</option>
+                                    <option value="Section B">Section B</option>
+                                    <option value="Section C">Section C</option>
+                                    <option value="Section D">Section D</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="create-user-error" class="text-danger small mb-3 d-none"></div>
+                        <div id="create-user-success" class="text-success small mb-3 d-none">User successfully created!</div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm" id="submit-new-user-btn">
+                            Create User Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark" id="editUserModalLabel">✏️ Edit Student Info</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-3 pb-4">
+                    <form id="edit-user-form">
+                        <input type="hidden" id="edit-user-id">
+                        <div class="mb-3">
+                            <label for="edit-user-grade" class="form-label text-muted">Grade Level</label>
+                            <select class="form-select" id="edit-user-grade">
+                                <option value="Grade 1">Grade 1</option>
+                                <option value="Grade 2">Grade 2</option>
+                                <option value="Grade 3">Grade 3</option>
+                                <option value="Grade 4">Grade 4</option>
+                                <option value="Grade 5">Grade 5</option>
+                                <option value="Grade 6">Grade 6</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-user-section" class="form-label text-muted">Section</label>
+                            <select class="form-select" id="edit-user-section">
+                                <option value="Section A">Section A</option>
+                                <option value="Section B">Section B</option>
+                                <option value="Section C">Section C</option>
+                                <option value="Section D">Section D</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm" id="save-user-btn">
+                            Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
