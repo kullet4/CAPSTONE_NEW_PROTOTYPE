@@ -40,6 +40,15 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// Auto-resize textareas for better mobile UX
+const textareas = document.querySelectorAll('textarea');
+textareas.forEach(textarea => {
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto'; // Reset the height
+        this.style.height = (this.scrollHeight) + 'px'; // Set it to the scroll height
+    });
+});
+
 // Create Instructional Material
 createModuleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
