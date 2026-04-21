@@ -73,14 +73,14 @@ onAuthStateChanged(auth, async (user) => {
 
             } else {
                 // Not a student, boot them out
-                window.location.href = 'login-dashboard.html';
+                window.location.href = 'index.html';
             }
         } catch (error) {
             console.error("Error fetching student data:", error);
             alert("Error loading dashboard data. You might be offline, using cached mode.");
         }
     } else {
-        window.location.href = 'login-dashboard.html'; // Redirect to login
+        window.location.href = 'index.html'; // Redirect to login
     }
 });
 
@@ -343,7 +343,7 @@ lessonFinishBtn.addEventListener('click', async () => {
 // Logout Handler
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
-        window.location.href = 'login-dashboard.html';
+        window.location.href = 'index.html';
     });
 });
 

@@ -29,14 +29,14 @@ onAuthStateChanged(auth, async (user) => {
                 monitorStudentsRealTime();
             } else {
                 // Not a teacher
-                window.location.href = 'login-dashboard.html';
+                window.location.href = 'index.html';
             }
         } catch (error) {
             console.error("Error fetching teacher data:", error);
             alert("Error loading dashboard data.");
         }
     } else {
-        window.location.href = 'login-dashboard.html';
+        window.location.href = 'index.html';
     }
 });
 
@@ -141,6 +141,6 @@ function monitorStudentsRealTime() {
 // Logout Handler
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
-        window.location.href = 'login-dashboard.html';
+        window.location.href = 'index.html';
     });
 });

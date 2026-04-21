@@ -1,7 +1,7 @@
-const CACHE_NAME = 'elms-cache-v4';
+const CACHE_NAME = 'elms-cache-v5';
 const urlsToCache = [
   '/',
-  '/login-dashboard.html',
+  '/index.html',
   '/student-dashboard.html',
   '/teacher-dashboard.html',
   '/admin-dashboard.html',

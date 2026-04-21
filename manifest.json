@@ -2,7 +2,7 @@
   "name": "SDT E-LMS Platform",
   "short_name": "ELMS",
   "description": "A Progressive Web App for self-determination theory based learning.",
-  "start_url": "/login-dashboard.html",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0056b3",

@@ -121,21 +121,21 @@ onAuthStateChanged(auth, async (user) => {
                 loadSystemData();
             } else {
                 // Not an admin
-                window.location.href = 'login-dashboard.html';
+                window.location.href = 'index.html';
             }
         } catch (error) {
             console.error("Error fetching admin data:", error);
             alert("Error validating admin role. Connection problem?");
         }
     } else {
-        window.location.href = 'login-dashboard.html';
+        window.location.href = 'index.html';
     }
 });
 
 // Logout Handler
 logoutBtn.addEventListener('click', () => {
     primarySignOut(auth).then(() => {
-        window.location.href = 'login-dashboard.html';
+        window.location.href = 'index.html';
     });
 });
 
