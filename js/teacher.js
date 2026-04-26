@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 // DOM Elements
 const userGreeting = document.getElementById('user-greeting');
@@ -9,6 +9,20 @@ const createModuleForm = document.getElementById('create-module-form');
 const moduleAlert = document.getElementById('module-alert');
 const studentListId = document.getElementById('student-monitoring-list');
 const studentCountBadge = document.getElementById('student-count');
+
+// New Quiz/Grading UI Elements
+const btnAddQuestion = document.getElementById('btn-add-question');
+const quizBuilderContainer = document.getElementById('quiz-builder-container');
+let questionCount = 0;
+
+// Analytics Modal Elements
+const sdModalEl = document.getElementById('studentDetailsModal');
+const sdModal = sdModalEl ? new bootstrap.Modal(sdModalEl) : null;
+
+// Filters to reduce Firebase read costs
+const filterGrade = document.getElementById('filter-grade');
+const filterSection = document.getElementById('filter-section');
+const btnLoadStudents = document.getElementById('btn-load-students');
 
 let currentUserDoc = null;
 
@@ -25,8 +39,10 @@ onAuthStateChanged(auth, async (user) => {
                 const mainGreetingName = document.getElementById('main-greeting-name');
                 if(mainGreetingName) mainGreetingName.textContent = teacherName.split(' ')[0]; // Big Gemini style "Hi [Name]"
                 
-                // Initialize Real-Time Tracking
-                monitorStudentsRealTime();
+                // Initialize student load
+                await loadStudentData();
+                btnLoadStudents.addEventListener('click', loadStudentData);
+
             } else {
                 // Not a teacher
                 window.location.href = 'index.html';
@@ -49,7 +65,42 @@ textareas.forEach(textarea => {
     });
 });
 
-// Create Instructional Material
+let classCompletionChart = null;
+
+// Quiz Builder Dynamic UI
+if(btnAddQuestion) {
+    btnAddQuestion.addEventListener('click', () => {
+        questionCount++;
+        const qDiv = document.createElement('div');
+        qDiv.className = 'quiz-q-card mb-3';
+        qDiv.innerHTML = `
+            <div class="quiz-q-header py-2 px-3 d-flex justify-content-between align-items-center">
+                <span class="text-primary"><i class="bi bi-question-circle"></i> Question ${questionCount}</span>
+                <button type="button" class="btn-close btn-sm remove-q"></button>
+            </div>
+            <div class="card-body p-3">
+                <input type="text" class="form-control border-primary mb-3 q-text fw-bold text-dark" placeholder="Type your question here..." required>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><input type="text" class="form-control rounded-pill q-opt shadow-sm" placeholder="Option A" required></div>
+                    <div class="col-6"><input type="text" class="form-control rounded-pill q-opt shadow-sm" placeholder="Option B" required></div>
+                    <div class="col-6"><input type="text" class="form-control rounded-pill q-opt shadow-sm" placeholder="Option C" required></div>
+                    <div class="col-6"><input type="text" class="form-control rounded-pill q-opt shadow-sm" placeholder="Option D" required></div>
+                </div>
+                <select class="form-select border-success bg-light q-ans fw-bold text-success rounded-pill" required>
+                    <option value="" disabled selected>Mark Correct Answer...</option>
+                    <option value="0">Option A is correct</option>
+                    <option value="1">Option B is correct</option>
+                    <option value="2">Option C is correct</option>
+                    <option value="3">Option D is correct</option>
+                </select>
+            </div>
+        `;
+        qDiv.querySelector('.remove-q').addEventListener('click', () => qDiv.remove());
+        quizBuilderContainer.appendChild(qDiv);
+    });
+}
+
+// 1. Create purely Reading Material (No Grade, Just XP)
 createModuleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -58,19 +109,23 @@ createModuleForm.addEventListener('submit', async (e) => {
     const contentText = document.getElementById('module-content').value;
     const gradeLevel = document.getElementById('module-grade').value;
     const section = document.getElementById('module-section').value || 'All';
+    const subject = document.getElementById('module-subject').value;
     const xp = parseInt(document.getElementById('module-xp').value, 10);
     const submitBtn = createModuleForm.querySelector('button[type="submit"]');
 
     try {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Publishing...`;
+        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Publishing...`;
 
         await addDoc(collection(db, "modules"), {
+            type: 'reading',
             title: title,
             description: desc,
             content: contentText,
             targetGrade: gradeLevel,
             targetSection: section,
+            subject: subject,
+            gradingCategory: 'none',  
             xpReward: xp,
             teacherId: auth.currentUser.uid,
             teacherName: currentUserDoc.name || 'Instructor',
@@ -78,46 +133,146 @@ createModuleForm.addEventListener('submit', async (e) => {
             status: 'active'
         });
 
-        // Show Success Alert
         moduleAlert.classList.remove('d-none');
         createModuleForm.reset();
-        
-        setTimeout(() => {
-            moduleAlert.classList.add('d-none');
-        }, 4000);
+        setTimeout(() => moduleAlert.classList.add('d-none'), 4000);
 
     } catch (error) {
-        console.error("Error adding module: ", error);
-        alert("Failed to publish material. You may be offline, changes will sync when reconnected.");
+        console.error("Error adding reading module: ", error);
+        alert("Failed to publish reading material. You may be offline.");
     } finally {
         submitBtn.disabled = false;
-        submitBtn.innerHTML = `Publish Material`;
+        submitBtn.innerHTML = `Publish Reading`;
     }
 });
 
-// Monitor Student Progress in Real-Time (onSnapshot)
-function monitorStudentsRealTime() {
-    // Query users collection strictly for role = 'student'
-    const q = query(collection(db, "users"), where("role", "==", "student"));
-    
-    // onSnapshot creates a real-time listener to Firestore data updates
-    onSnapshot(q, (snapshot) => {
-        studentListId.innerHTML = ''; // Clear loading state or old data
-        studentCountBadge.textContent = snapshot.size;
+// 2. Create purely Quiz Material (Graded + XP)
+const createQuizForm = document.getElementById('create-quiz-form');
+const quizAlert = document.getElementById('quiz-alert');
 
-        if (snapshot.empty) {
-            studentListId.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No students enrolled yet.</td></tr>`;
+if(createQuizForm) {
+    createQuizForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('quiz-title').value;
+        const desc = document.getElementById('quiz-desc').value;
+        const gradeLevel = document.getElementById('quiz-grade').value;
+        const section = document.getElementById('quiz-section').value || 'All';
+        const subject = document.getElementById('quiz-subject').value;
+        const gradingType = document.getElementById('quiz-grading-type').value;
+        const xp = parseInt(document.getElementById('quiz-xp').value, 10);
+        const submitBtn = createQuizForm.querySelector('button[type="submit"]');
+
+        // Gather Questions
+        const questions = [];
+        document.querySelectorAll('#quiz-builder-container .quiz-q-card').forEach(card => {
+            questions.push({
+                question: card.querySelector('.q-text').value,
+                options: Array.from(card.querySelectorAll('.q-opt')).map(i => i.value),
+                correctIndex: parseInt(card.querySelector('.q-ans').value, 10)
+            });
+        });
+
+        if (questions.length === 0) {
+            alert("Please add at least one question to the quiz.");
             return;
         }
 
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Publishing...`;
+
+            await addDoc(collection(db, "modules"), {
+                type: 'quiz',
+                title: title,
+                description: desc,
+                targetGrade: gradeLevel,
+                targetSection: section,
+                subject: subject,
+                gradingCategory: gradingType,  // 'ww', 'pt', 'qa', 'none'
+                questions: questions,          // Array of M/C questions
+                maxScore: questions.length,    // Derived from quiz length
+                xpReward: xp,
+                teacherId: auth.currentUser.uid,
+                teacherName: currentUserDoc.name || 'Instructor',
+                createdAt: serverTimestamp(),
+                status: 'active'
+            });
+
+            quizAlert.classList.remove('d-none');
+            createQuizForm.reset();
+            if(quizBuilderContainer) quizBuilderContainer.innerHTML = '';
+            questionCount = 0;
+            setTimeout(() => quizAlert.classList.add('d-none'), 4000);
+
+        } catch (error) {
+            console.error("Error adding quiz: ", error);
+            alert("Failed to publish quiz.");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `Publish Quiz`;
+        }
+    });
+}
+
+// Fetch Student Progress (Manual fetch to save Firebase Read Costs)
+async function loadStudentData() {
+    try {
+        if(btnLoadStudents) {
+            btnLoadStudents.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+            btnLoadStudents.disabled = true;
+        }
+
+        studentListId.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Fetching classroom data...</td></tr>`;
+
+        // Base query for students
+        let conditions = [where("role", "==", "student")];
+        
+        // Add optional filters to limit costs to a specific classroom
+        if (filterGrade && filterGrade.value) {
+            conditions.push(where("gradeLevel", "==", filterGrade.value));
+        }
+        if (filterSection && filterSection.value) {
+            conditions.push(where("section", "==", filterSection.value));
+        }
+
+        const q = query(collection(db, "users"), ...conditions);
+        const snapshot = await getDocs(q);
+
+        studentListId.innerHTML = ''; 
+        studentCountBadge.textContent = snapshot.size;
+
+        if (snapshot.empty) {
+            studentListId.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No students found matching these filters.</td></tr>`;
+            renderTeacherChart(0, 0); // No data
+            return;
+        }
+
+        let activeCount = 0;
+        let inactiveCount = 0;
+
         snapshot.forEach((docSnap) => {
-            const student = docSnap.data();
-            const studentId = docSnap.id;
-            const xp = student.xp || 0;
-            const gLvl = student.gradeLevel || 'Unknown';
-            const sec = student.section || 'N/A';
+            const studentData = docSnap.data();
+            const xp = studentData.xp || 0;
+            const gLvl = studentData.gradeLevel || 'Unknown';
+            const sec = studentData.section || 'N/A';
             
-            // Determine status based loosely on XP progression logic
+            if (xp > 0) activeCount++;
+            else inactiveCount++;
+
+            // Ensure student has a default scores object and DepEd rating track
+            const scores = studentData.scores || { wwRaw: 0, wwMax: 100, ptRaw: 0, ptMax: 100, qaRaw: 0, qaMax: 100 };
+            const trackStr = studentData.track || 'LANGUAGE_AP_ESP'; 
+            const weightTrack = window.DEPED_WEIGHTS[trackStr] || window.DEPED_WEIGHTS.LANGUAGE_AP_ESP;
+
+            // Compute Transmuted Grade Client-Side via ZERO Reads
+            const gradeResult = window.DepEdGrader.calculateGrade(scores, weightTrack);
+            let gradeBadgeClass = 'bg-secondary';
+            if (gradeResult.transmutedGrade >= 90) gradeBadgeClass = 'bg-success';
+            else if (gradeResult.transmutedGrade >= 80) gradeBadgeClass = 'bg-primary';
+            else if (gradeResult.transmutedGrade >= 75) gradeBadgeClass = 'bg-warning text-dark';
+            else gradeBadgeClass = 'bg-danger';
+
             let statusBadge = '';
             if (xp === 0) {
                 statusBadge = `<span class="badge bg-secondary">Not Started</span>`;
@@ -128,22 +283,178 @@ function monitorStudentsRealTime() {
             }
 
             const tr = document.createElement('tr');
+            tr.className = "student-analytics-row"; // Added for easy DOM querying
+            const studentName = studentData.name || studentData.email || 'Anonymous Student';
+            
+            // Set DATA attributes for quick client-side filtering without pinging Firebase
+            tr.setAttribute('data-name', studentName.toLowerCase());
+            tr.setAttribute('data-grade', gLvl);
+            tr.setAttribute('data-section', sec);
+            tr.setAttribute('data-active', xp > 0 ? "true" : "false");
+
             tr.innerHTML = `
-                <td class="ps-4 fw-medium">${student.name || student.email || 'Anonymous Student'}</td>
+                <td class="ps-4 fw-medium">${studentName}</td>
                 <td class="text-muted"><small>${gLvl} - ${sec}</small></td>
                 <td><i class="bi bi-star-fill text-warning"></i> ${xp}</td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge ${gradeBadgeClass} rounded-pill fs-6">${gradeResult.transmutedGrade}%</span>
+                        <small class="text-muted text-truncate" style="max-width: 100px;" title="${gradeResult.descriptor}">${gradeResult.descriptor}</small>
+                    </div>
+                    <div class="progress mt-1" style="height: 4px;" title="Initial Grade: ${gradeResult.initialGrade}">
+                        <div class="progress-bar ${gradeBadgeClass.split(' ')[0]}" role="progressbar" style="width: ${gradeResult.transmutedGrade}%" aria-valuenow="${gradeResult.transmutedGrade}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </td>
                 <td>${statusBadge}</td>
                 <td class="text-end pe-4">
-                    <button class="btn btn-sm btn-outline-primary" aria-label="View Details">
+                    <button class="btn btn-sm btn-outline-primary btn-view-details" aria-label="View Details">
                         <i class="bi bi-search"></i>
                     </button>
                 </td>
             `;
+            
+            // Attach event listener for Deeper Analytics Modal
+            const viewBtn = tr.querySelector('.btn-view-details');
+            viewBtn.addEventListener('click', () => {
+                document.getElementById('sd-modal-name').textContent = studentData.name || studentData.email || 'Anonymous Student';
+                document.getElementById('sd-modal-info').textContent = `${gLvl} - ${sec} | Track: ${trackStr.replace(/_/g, ' ')}`;
+                document.getElementById('sd-modal-xp').textContent = xp;
+                document.getElementById('sd-modal-grade').textContent = gradeResult.transmutedGrade + '%';
+                
+                const listEl = document.getElementById('sd-modal-completed-list');
+                listEl.innerHTML = '';
+                
+                const completedMods = studentData.completedModules || [];
+                if (completedMods.length === 0) {
+                    listEl.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3">No activities completed yet.</td></tr>`;
+                } else {
+                    // Loop backwards so newest activities are on top
+                    completedMods.slice().reverse().forEach(mod => {
+                        const modType = mod.gradingCategory && mod.gradingCategory !== 'none' 
+                            ? mod.gradingCategory.toUpperCase() 
+                            : 'PRACTICE';
+                        
+                        let badgeColor = modType === 'PRACTICE' ? 'bg-secondary' : 'bg-primary';
+                            
+                        const scoreTxt = (mod.maxScore && mod.maxScore > 0) 
+                            ? `${mod.score || 0}/${mod.maxScore}` 
+                            : `<i class="bi bi-check-circle-fill text-success"></i>`;
+                            
+                        listEl.innerHTML += `
+                            <tr>
+                                <td class="fw-medium text-dark">${mod.title || 'Unknown Activity'}</td>
+                                <td><span class="badge ${badgeColor}">${modType}</span></td>
+                                <td class="text-end fw-bold text-success">${scoreTxt}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                if(sdModal) sdModal.show();
+            });
+
             studentListId.appendChild(tr);
         });
-    }, (error) => {
-        console.error("Error setting up real-time listener: ", error);
-        studentListId.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to load live data (Offline fallback).</td></tr>`;
+
+        // Finally, render the Completion chart
+        renderTeacherChart(activeCount, inactiveCount);
+
+    } catch (error) {
+        console.error("Error fetching students: ", error);
+        studentListId.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Failed to load data. Please try again.</td></tr>`;
+        renderTeacherChart(0, 0); // No data
+    } finally {
+        if(btnLoadStudents) {
+            btnLoadStudents.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Load`;
+            btnLoadStudents.disabled = false;
+        }
+    }
+}
+
+// Client-Side Filtering for Pie Chart & Table View 
+// (Zero Firebase Reads + Instant speed)
+function applyLocalFilters() {
+    const fName = document.getElementById('localFilterName')?.value.toLowerCase() || '';
+    const fGrade = document.getElementById('localFilterGrade')?.value || '';
+    const fSection = document.getElementById('localFilterSection')?.value || '';
+    
+    const rows = document.querySelectorAll('.student-analytics-row');
+    let visibleActive = 0;
+    let visibleInactive = 0;
+
+    rows.forEach(row => {
+        const rName = row.getAttribute('data-name');
+        const rGrade = row.getAttribute('data-grade');
+        const rSection = row.getAttribute('data-section');
+        const rActive = row.getAttribute('data-active') === "true";
+        
+        const matchName = rName.includes(fName);
+        const matchGrade = fGrade === '' || rGrade === fGrade;
+        const matchSection = fSection === '' || rSection === fSection;
+
+        if (matchName && matchGrade && matchSection) {
+            row.style.display = '';
+            if (rActive) visibleActive++;
+            else visibleInactive++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    renderTeacherChart(visibleActive, visibleInactive);
+}
+
+document.getElementById('localFilterName')?.addEventListener('input', applyLocalFilters);
+document.getElementById('localFilterGrade')?.addEventListener('change', applyLocalFilters);
+document.getElementById('localFilterSection')?.addEventListener('change', applyLocalFilters);
+
+// Chart.js Teacher Stats Render
+function renderTeacherChart(active, inactive) {
+    const total = active + inactive;
+    const rate = total > 0 ? Math.round((active / total) * 100) : 0;
+    const statText = document.getElementById('chart-stat-active');
+    
+    if(statText) {
+        statText.textContent = rate + '%';
+        statText.className = rate >= 75 ? 'mb-0 fw-bold text-success display-6' : (rate >= 50 ? 'mb-0 fw-bold text-warning  display-6' : 'mb-0 fw-bold text-danger  display-6');
+    }
+
+    const ctx = document.getElementById('teacherClassChart');
+    if (!ctx) return;
+
+    if (classCompletionChart) {
+        classCompletionChart.destroy();
+    }
+
+    // Determine colors
+    const activeColor = rate >= 75 ? '#198754' : (rate >= 50 ? '#ffc107' : '#dc3545');
+
+    classCompletionChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Started Coursework', 'Not Started'],
+            datasets: [{
+                data: [active, inactive],
+                backgroundColor: [activeColor, '#e9ecef'],
+                borderColor: ['#fff', '#fff'],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%', // makes it a nice thin ring
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ' ' + context.label + ': ' + context.raw + ' student(s)';
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 

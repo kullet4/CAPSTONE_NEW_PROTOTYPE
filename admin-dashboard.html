@@ -7,6 +7,8 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Chart.js for Admin Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css">
     <!-- PWA Manifest -->
@@ -73,16 +75,53 @@
             </div>
         </div>
 
-        <div class="row g-4">
-            
+        <!-- NEW: Analytics & Reports Section -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-bottom pb-2 pt-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title text-dark mb-0"><i class="bi bi-bar-chart-fill text-primary"></i> Demographics Overview</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="barChart" style="max-height: 250px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-bottom pb-2 pt-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title text-dark mb-0"><i class="bi bi-pie-chart-fill text-success"></i> Module Completion Stats</h5>
+                    </div>
+                    <div class="card-body d-flex justify-content-center">
+                        <canvas id="pieChart" style="max-height: 250px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
             <!-- Left Column: User Management -->
             <div class="col-lg-6">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-header bg-white border-bottom pb-2 pt-3 d-flex justify-content-between align-items-center">
                         <h5 class="card-title text-dark mb-0"><i class="bi bi-people-fill text-primary"></i> System Users</h5>
-                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
-                            <i class="bi bi-person-plus"></i> Create User
-                        </button>
+                        <div class="d-flex">
+                            <select class="form-select form-select-sm me-2" id="filter-user-role" style="max-width: 130px; cursor: pointer;">
+                                <option value="all">All Roles</option>
+                                <option value="student">Students</option>
+                                <option value="teacher">Teachers</option>
+                                <option value="admin">Admins</option>
+                            </select>
+                            <button class="btn btn-sm btn-outline-secondary me-2" id="btn-export-csv" title="Extract All User Data">
+                                <i class="bi bi-download"></i> CSV
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary me-2" id="btn-refresh-admin" title="Refresh System Data">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                                <i class="bi bi-person-plus"></i> Create User
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
@@ -139,6 +178,42 @@
             </div>
 
         </div>
+
+        <!-- NEW: System Audit Logs -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white border-bottom pb-2 pt-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title text-dark mb-0"><i class="bi bi-clock-history text-warning"></i> System Audit Logs</h5>
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-export-logs" title="Extract Log Data">
+                            <i class="bi bi-download"></i> Download Logs
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light text-muted sticky-top">
+                                    <tr>
+                                        <th scope="col" class="ps-4">Timestamp</th>
+                                        <th scope="col">Action Type</th>
+                                        <th scope="col">User/Actor</th>
+                                        <th scope="col">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-logs-list">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">
+                                            <div class="spinner-border spinner-border-sm text-warning" role="status"></div> Tracking system activity...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Create User Modal (Admin Tool) -->

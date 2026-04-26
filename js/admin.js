@@ -3,7 +3,7 @@ import { firebaseConfig } from './firebase-config.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getAuth as getSecondaryAuth, createUserWithEmailAndPassword, signOut as secondarySignOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { onAuthStateChanged, signOut as primarySignOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { doc, getDoc, setDoc, collection, deleteDoc, onSnapshot, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { doc, getDoc, setDoc, collection, deleteDoc, getDocs, query, orderBy, updateDoc, addDoc, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 // Initialize a secondary Firebase instance purely for creating users, securely bypassing the main Auth state switch
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryAppForAdminCreates");
@@ -88,6 +88,7 @@ createUserForm.addEventListener('submit', async (e) => {
         
         // Write it!
         await setDoc(doc(db, "users", newUid), userData);
+        await logAction("USER_CREATED", `Created new ${role.toUpperCase()} account for: ${email}`);
         
         // Let Admin know
         successDiv.classList.remove('d-none');
@@ -118,7 +119,8 @@ onAuthStateChanged(auth, async (user) => {
                 userGreeting.textContent = `Admin User: ${userData.name || user.email}`;
                 
                 // Initialize Admin Dashboards
-                loadSystemData();
+                await loadSystemData();
+                document.getElementById('btn-refresh-admin').addEventListener('click', loadSystemData);
             } else {
                 // Not an admin
                 window.location.href = 'index.html';
@@ -139,28 +141,61 @@ logoutBtn.addEventListener('click', () => {
     });
 });
 
-// Initialize Data Streams (Real-Time Observers)
-function loadSystemData() {
-    // 1. Observe Users Collection
-    const usersQuery = query(collection(db, "users"));
-    onSnapshot(usersQuery, (snapshot) => {
-        let totalUsers = snapshot.size;
+let barChart = null;
+let pieChart = null;
+let exportUserData = [];
+let exportLogsData = [];
+
+// Initialize Data Streams (Manual fetch to save Firebase Read Costs)
+async function loadSystemData() {
+    const refreshBtn = document.getElementById('btn-refresh-admin');
+    if (refreshBtn) {
+        refreshBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+        refreshBtn.disabled = true;
+    }
+
+    try {
+        // 1. Fetch Users Collection
+        const usersQuery = query(collection(db, "users"));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        let totalUsers = usersSnapshot.size;
         let totalStudents = 0;
         let totalTeachers = 0;
         
+        let activeStudents = 0;
+        let gradeCounts = { 'Grade 1':0, 'Grade 2':0, 'Grade 3':0, 'Grade 4':0, 'Grade 5':0, 'Grade 6':0 };
+        exportUserData = [["Name", "Email", "Role", "Grade", "Section", "XP"]]; // CSV Header
+        
         usersList.innerHTML = '';
         
-        if(snapshot.empty) {
+        if(usersSnapshot.empty) {
             usersList.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No users found.</td></tr>`;
         }
 
-        snapshot.forEach((docSnap) => {
+        usersSnapshot.forEach((docSnap) => {
             const userData = docSnap.data();
             const id = docSnap.id;
             
             // Tally KPIs
-            if(userData.role === 'student') totalStudents++;
+            if(userData.role === 'student') {
+                totalStudents++;
+                if (userData.xp > 0) activeStudents++;
+                if (gradeCounts[userData.gradeLevel] !== undefined) {
+                    gradeCounts[userData.gradeLevel]++;
+                }
+            }
             if(userData.role === 'teacher') totalTeachers++;
+
+            // Prepare CSV Data
+            exportUserData.push([
+                userData.name || 'Unknown',
+                userData.email || 'N/A',
+                userData.role || 'N/A',
+                userData.gradeLevel || 'N/A',
+                userData.section || 'N/A',
+                userData.xp || 0
+            ]);
 
             // Render Table Row
             let roleBadge = '';
@@ -190,6 +225,7 @@ function loadSystemData() {
             }
 
             const tr = document.createElement('tr');
+            tr.setAttribute('data-role', userData.role || 'unknown');
             tr.innerHTML = `
                 <td class="ps-4 fw-medium">${userData.name || userData.email || 'Unknown'}</td>
                 <td>${roleBadge}</td>
@@ -200,6 +236,10 @@ function loadSystemData() {
             `;
             usersList.appendChild(tr);
         });
+
+        // Apply current filter after fresh fetch
+        const currentFilter = document.getElementById('filter-user-role')?.value || 'all';
+        applyUserFilter(currentFilter);
 
         // Add event listeners for edit buttons
         document.querySelectorAll('.edit-student-btn').forEach(btn => {
@@ -221,22 +261,22 @@ function loadSystemData() {
         kpiUsers.textContent = totalUsers;
         kpiStudents.textContent = totalStudents;
         kpiTeachers.textContent = totalTeachers;
-    }, (error) => {
-         console.error("Error loading users stream:", error);
-         usersList.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Local cache mode. Live updates failing.</td></tr>`;
-    });
 
-    // 2. Observe Modules Collection (Content Moderation)
-    const modulesQuery = query(collection(db, "modules"));
-    onSnapshot(modulesQuery, (snapshot) => {
-        kpiModules.textContent = snapshot.size;
+        // Render Charts!
+        renderCharts(gradeCounts, totalStudents, activeStudents);
+
+        // 2. Fetch Modules Collection (Content Moderation)
+        const modulesQuery = query(collection(db, "modules"));
+        const modulesSnapshot = await getDocs(modulesQuery);
+        
+        kpiModules.textContent = modulesSnapshot.size;
         modulesList.innerHTML = '';
         
-        if(snapshot.empty) {
+        if(modulesSnapshot.empty) {
             modulesList.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No modules published yet.</td></tr>`;
         }
 
-        snapshot.forEach((docSnap) => {
+        modulesSnapshot.forEach((docSnap) => {
             const modData = docSnap.data();
             const id = docSnap.id;
             
@@ -261,12 +301,173 @@ function loadSystemData() {
                 await deleteModule(moduleId);
             });
         });
+        
+        // 3. Fetch System Audit Logs
+        await loadAuditLogs();
 
-    }, (error) => {
-         console.error("Error loading modules stream:", error);
-         modulesList.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Local cache mode. Live updates failing.</td></tr>`;
+    } catch (error) {
+        console.error("Error loading system data:", error);
+        usersList.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to fetch data securely.</td></tr>`;
+    } finally {
+        if (refreshBtn) {
+            refreshBtn.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Refresh`;
+            refreshBtn.disabled = false;
+        }
+    }
+}
+
+// ===== PHASE 1: ADMIN ANALYTICS & LOGGING =================
+
+// Handle User Role Filtering (Client-side)
+document.getElementById('filter-user-role')?.addEventListener('change', (e) => {
+    applyUserFilter(e.target.value);
+});
+
+function applyUserFilter(role) {
+    document.querySelectorAll('#users-list tr[data-role]').forEach(row => {
+        if (role === 'all' || row.getAttribute('data-role') === role) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
     });
 }
+
+// Utility to write to System Audit Logs
+export async function logAction(actionType, details, actor) {
+    try {
+        await addDoc(collection(db, "system_logs"), {
+            actionType,
+            details,
+            actor: actor || auth.currentUser?.email || 'Unknown',
+            timestamp: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Failed to write log", error);
+    }
+}
+
+// Fetch and display System Audit Logs
+async function loadAuditLogs() {
+    const logsList = document.getElementById('audit-logs-list');
+    exportLogsData = [["Timestamp", "Action", "Actor", "Details"]]; // Reset CSV
+
+    try {
+        const logsQuery = query(collection(db, "system_logs"), orderBy("timestamp", "desc"), limit(50));
+        const logsSnapshot = await getDocs(logsQuery);
+        
+        logsList.innerHTML = '';
+
+        if(logsSnapshot.empty) {
+            logsList.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No system activity logged yet.</td></tr>`;
+            return;
+        }
+
+        logsSnapshot.forEach(docSnap => {
+            const l = docSnap.data();
+            const date = l.timestamp ? l.timestamp.toDate().toLocaleString() : 'Just now';
+            
+            // Add to CSV
+            exportLogsData.push([date, l.actionType, l.actor, l.details]);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-muted" style="font-size: 0.85rem;">${date}</td>
+                <td><span class="badge bg-secondary">${l.actionType}</span></td>
+                <td class="fw-medium">${l.actor}</td>
+                <td class="text-truncate" style="max-width: 250px;">${l.details}</td>
+            `;
+            logsList.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error("Error loading logs", error);
+        logsList.innerHTML = `<tr><td colspan="4" class="text-center text-danger">Failed to fetch logs.</td></tr>`;
+    }
+}
+
+// Render Chart.js Analytics
+function renderCharts(gradeCounts, totalStudents, activeStudents) {
+    // Destroy previous charts if they exist so they don't overlap on refresh
+    if(barChart) barChart.destroy();
+    if(pieChart) pieChart.destroy();
+
+    // Bar Chart: Students per Grade
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    barChart = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(gradeCounts),
+            datasets: [{
+                label: 'Enrolled Students',
+                data: Object.values(gradeCounts),
+                backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    // Pie Chart: Active vs Inactive Students
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    let inactive = totalStudents - activeStudents;
+    pieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Started/Finished Module (Active)', 'Not Started (Inactive)'],
+            datasets: [{
+                data: [activeStudents, inactive],
+                backgroundColor: ['rgba(25, 135, 84, 0.7)', 'rgba(220, 53, 69, 0.7)'],
+                borderColor: ['rgba(25, 135, 84, 1)', 'rgba(220, 53, 69, 1)'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+// CSV Export Utility
+function downloadCSV(csvArray, filename) {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvArray.forEach(rowArray => {
+        let row = rowArray.map(item => `"${String(item).replace(/"/g, '""')}"`).join(",");
+        csvContent += row + "\r\n";
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+document.getElementById('btn-export-csv').addEventListener('click', () => {
+    if(exportUserData.length > 1) {
+        downloadCSV(exportUserData, `ELMS_Users_${new Date().toISOString().slice(0,10)}.csv`);
+        logAction("DATA_EXPORT", "Admin exported User list to CSV");
+    } else {
+        alert("No user data available to export.");
+    }
+});
+
+document.getElementById('btn-export-logs')?.addEventListener('click', () => {
+    if(exportLogsData.length > 1) {
+        downloadCSV(exportLogsData, `ELMS_Logs_${new Date().toISOString().slice(0,10)}.csv`);
+        logAction("DATA_EXPORT", "Admin exported Audit Logs down to CSV");
+    } else {
+        alert("No logs available to export.");
+    }
+});
 
 // Handle Saving Edited Student Info
 editUserForm.addEventListener('submit', async (e) => {
@@ -285,6 +486,8 @@ editUserForm.addEventListener('submit', async (e) => {
         });
         
         editUserModal.hide();
+        await loadSystemData();
+        await logAction("STUDENT_EDITED", `Admin changed grade/section placement for student ID: ${userId}`);
     } catch (error) {
         console.error("Error updating user:", error);
         alert('Failed to update student info.');
@@ -297,10 +500,12 @@ async function deleteModule(moduleId) {
     if(confirm("Are you sure you want to permanently delete this instructional material? This cannot be undone.")) {
         try {
             await deleteDoc(doc(db, "modules", moduleId));
-            // Real-time listener will automatically remove the row and update the KPI!
+            await logAction("MODULE_DELETED", `Admin deleted instructional module ID: ${moduleId}`);
+            // Re-fetch the data to reflect deletion
+            await loadSystemData();
         } catch (error) {
-            console.error("Failed to delete module: ", error);
-            alert("Error deleting module. You may be offline.");
+            console.error("Error deleting module:", error);
+            alert("Failed to delete module.");
         }
     }
 }

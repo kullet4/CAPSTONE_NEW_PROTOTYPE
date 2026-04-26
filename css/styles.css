@@ -163,3 +163,74 @@ textarea::-webkit-resizer {
 .navbar {
     border-bottom: 3px solid rgba(0, 0, 0, 0.05);
 }
+
+/* Gamified Tab Navigation (For Teacher Dashboard Creation Tabs) */
+.gamified-tabs {
+    border-bottom: none !important;
+    gap: 0.5rem;
+    padding: 0.4rem;
+    background-color: #f0f4f8; /* Soft inset background */
+    border-radius: 1.2rem;
+    display: flex;
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.03); /* Gives it a "pressed in" well look */
+}
+
+.gamified-tabs .nav-item {
+    flex: 1; /* Makes tabs stretch equally */
+}
+
+.gamified-tabs .nav-link {
+    width: 100%;
+    text-align: center;
+    border: 2px solid transparent !important;
+    border-radius: 1rem !important;
+    color: #a0aab2 !important; /* Soft unselected text */
+    font-weight: 800 !important;
+    padding: 0.8rem 0.5rem;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background-color: transparent !important;
+}
+
+.gamified-tabs .nav-link:hover {
+    background-color: rgba(0,0,0,0.04) !important;
+    color: #4a4a4a !important;
+    transform: scale(0.98);
+}
+
+/* Specific Active Colors for different tabs */
+.gamified-tabs .nav-link.active#reading-tab {
+    background-color: white !important;
+    color: #198754 !important; /* Bootstrap Success Green */
+    border: 2px solid #e1ecdf !important;
+    border-bottom: 4px solid #198754 !important;
+    box-shadow: 0 4px 10px rgba(25, 135, 84, 0.1);
+    transform: translateY(-2px);
+}
+
+.gamified-tabs .nav-link.active#quiz-tab {
+    background-color: white !important;
+    color: #0d6efd !important; /* Bootstrap Primary Blue */
+    border: 2px solid #dde7f6 !important;
+    border-bottom: 4px solid #0d6efd !important;
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Quiz Builder Question Cards Styling */
+.quiz-q-card {
+    border-radius: 1.2rem;
+    border: 2px solid #e5e5e5;
+    background-color: white;
+    overflow: hidden;
+    transition: 0.2s;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.04);
+}
+.quiz-q-card:hover {
+    border-color: #0d6efd;
+}
+.quiz-q-header {
+    background: #f8f9fa;
+    border-bottom: 2px solid #e5e5e5;
+    font-weight: 800;
+    color: #4a4a4a;
+}

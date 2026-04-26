@@ -67,6 +67,28 @@ onAuthStateChanged(auth, async (user) => {
                 // Animate XP
                 animateValue(xpPoints, 0, currentXP, 1000);
 
+                // --- Gamification: Phase 2 Grade Progress Generation (ZERO Reads Calculation) ---
+                const scores = userData.scores || { wwRaw: 0, wwMax: 100, ptRaw: 0, ptMax: 100, qaRaw: 0, qaMax: 100 };
+                const trackStr = userData.track || 'LANGUAGE_AP_ESP';
+                const weightTrack = window.DEPED_WEIGHTS[trackStr] || window.DEPED_WEIGHTS.LANGUAGE_AP_ESP;
+                
+                const gradeResult = window.DepEdGrader.calculateGrade(scores, weightTrack);
+                
+                // Update Student Phase 2 UI
+                document.getElementById('student-transmuted-grade').textContent = gradeResult.transmutedGrade + "%";
+                document.getElementById('student-descriptor').textContent = "(" + gradeResult.descriptor + ")";
+                document.getElementById('student-initial-grade').textContent = "Initial: " + gradeResult.initialGrade;
+                
+                const progressEl = document.getElementById('student-grade-progress');
+                progressEl.style.width = gradeResult.transmutedGrade + "%";
+                progressEl.setAttribute('aria-valuenow', gradeResult.transmutedGrade);
+                
+                // Color code the progress bar based on performance
+                if (gradeResult.transmutedGrade >= 90) progressEl.className = 'progress-bar bg-success';
+                else if (gradeResult.transmutedGrade >= 80) progressEl.className = 'progress-bar bg-primary';
+                else if (gradeResult.transmutedGrade >= 75) progressEl.className = 'progress-bar bg-warning';
+                else progressEl.className = 'progress-bar bg-danger';
+
                 // Load Leaderboard and Modules
                 loadLeaderboard();
                 loadModules(studentGrade, studentSection);
