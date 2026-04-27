@@ -34,15 +34,6 @@ function renderLoginForm() {
                     <button type="button" id="forgot-password-btn" class="btn btn-link text-decoration-none fw-bold text-secondary small p-0" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">I forgot my password!</button>
                 </div>
             </form>
-
-            <hr class="my-4" style="border-top: 3px dashed #e6e6e6; opacity: 1;">
-            
-            <h6 class="text-secondary fw-bold text-center mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">Quick Demo Shortcuts</h6>
-            <div class="d-flex flex-wrap justify-content-center gap-2">
-                <button type="button" id="demo-student" class="btn btn-light fw-bold text-primary rounded-pill border-2 border-primary border px-3 py-1 text-nowrap flex-grow-1 flex-sm-grow-0" style="font-size: 0.9rem;">🎓 Student</button>
-                <button type="button" id="demo-teacher" class="btn btn-light fw-bold text-success rounded-pill border-2 border-success border px-3 py-1 text-nowrap flex-grow-1 flex-sm-grow-0" style="font-size: 0.9rem;">📝 Teacher</button>
-                <button type="button" id="demo-admin" class="btn btn-light fw-bold text-dark rounded-pill border-2 border-dark border px-3 py-1 text-nowrap flex-grow-1 flex-sm-grow-0" style="font-size: 0.9rem;">🛡️ Admin</button>
-            </div>
         </div>
     `;
 
@@ -100,17 +91,6 @@ function renderLoginForm() {
             }
         });
     }
-
-    // Demo Button Handlers
-    const setDemoLogin = (email) => {
-        document.getElementById('email').value = email;
-        document.getElementById('password').value = 'password123';
-        document.getElementById('login-submit-btn').click(); // Auto-submit
-    };
-
-    document.getElementById('demo-student').addEventListener('click', () => setDemoLogin('student@demo.com'));
-    document.getElementById('demo-teacher').addEventListener('click', () => setDemoLogin('teacher@demo.com'));
-    document.getElementById('demo-admin').addEventListener('click', () => setDemoLogin('admin@demo.com'));
 }
 
 // Handle Routing Details on Login

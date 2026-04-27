@@ -86,6 +86,10 @@
                                         <option value="" disabled selected>Select Grade</option>
                                         <option value="Grade 1">Grade 1</option>
                                         <option value="Grade 2">Grade 2</option>
+                                        <option value="Grade 3">Grade 3</option>
+                                        <option value="Grade 4">Grade 4</option>
+                                        <option value="Grade 5">Grade 5</option>
+                                        <option value="Grade 6">Grade 6</option>
                                         <option value="All Grades">All Grades</option>
                                     </select>
                                 </div>
@@ -94,6 +98,9 @@
                                     <select class="form-select" id="module-section" required>
                                         <option value="All">All Sections</option>
                                         <option value="Section A">Section A</option>
+                                        <option value="Section B">Section B</option>
+                                        <option value="Section C">Section C</option>
+                                        <option value="Section D">Section D</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4 mb-3">
@@ -147,6 +154,10 @@
                                     <select class="form-select" id="quiz-grade" required>
                                         <option value="Grade 1">Grade 1</option>
                                         <option value="Grade 2">Grade 2</option>
+                                        <option value="Grade 3">Grade 3</option>
+                                        <option value="Grade 4">Grade 4</option>
+                                        <option value="Grade 5">Grade 5</option>
+                                        <option value="Grade 6">Grade 6</option>
                                         <option value="All Grades" selected>All Grades</option>
                                     </select>
                                 </div>
@@ -155,6 +166,9 @@
                                     <select class="form-select" id="quiz-section" required>
                                         <option value="All" selected>All Sections</option>
                                         <option value="Section A">Section A</option>
+                                        <option value="Section B">Section B</option>
+                                        <option value="Section C">Section C</option>
+                                        <option value="Section D">Section D</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3 mb-3">
@@ -173,13 +187,19 @@
                                     <input type="number" class="form-control" id="quiz-xp" required min="10" value="100">
                                 </div>
                             </div>
-                            <div class="mb-3 border rounded p-2 bg-light">
-                                <label for="quiz-grading-type" class="form-label fw-bold text-primary mb-1">Grading Category</label>
-                                <select class="form-select border-primary" id="quiz-grading-type">
-                                    <option value="ww">Written Work (WW)</option>
-                                    <option value="pt">Performance Task (PT)</option>
-                                    <option value="qa">Quarterly Assessment (QA)</option>
-                                </select>
+                            <div class="row border rounded py-2 px-1 bg-light mx-0 mb-3 align-items-center">
+                                <div class="col-md-6 mb-2 mb-md-0">
+                                    <label for="quiz-grading-type" class="form-label fw-bold text-primary mb-1">Grading Category</label>
+                                    <select class="form-select border-primary" id="quiz-grading-type">
+                                        <option value="ww">Written Work (WW)</option>
+                                        <option value="pt">Performance Task (PT)</option>
+                                        <option value="qa">Quarterly Assessment (QA)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="quiz-max-score" class="form-label fw-bold text-primary mb-1">Expected Grade / Max Score</label>
+                                    <input type="number" class="form-control border-primary fw-bold" id="quiz-max-score" required min="1" value="100">
+                                </div>
                             </div>
                             
                             <!-- Quiz Builder -->
@@ -204,7 +224,12 @@
                     <div class="card-header bg-white border-bottom pb-2 pt-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h5 class="card-title text-primary mb-0"><i class="bi bi-people"></i> Student Analytics</h5>
-                            <span class="badge bg-primary rounded-pill" id="student-count">0</span>
+                            <div>
+                                <button class="btn btn-sm btn-outline-info me-2 fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#gradingReferenceModal">
+                                    <i class="bi bi-info-circle-fill text-info"></i> Grading Reference
+                                </button>
+                                <span class="badge bg-primary rounded-pill" id="student-count">0</span>
+                            </div>
                         </div>
                         <!-- Filters for controlling Firebase Read Costs -->
                         <div class="row g-2 align-items-center py-2">
@@ -261,8 +286,8 @@
                     </div>
                     <!-- Teacher Class Completion Chart with Local Filters -->
                     <div class="card-footer bg-white p-0 border-top-0 shadow-sm mt-2 rounded">
-                        <div class="bg-primary text-white p-2 px-3 d-flex flex-wrap justify-content-between align-items-center" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                            <h6 class="fw-bold mb-0 me-2"><i class="bi bi-pie-chart-fill text-warning"></i> Module Completion Stats</h6>
+                        <div class="bg-light text-dark border-bottom p-2 px-3 d-flex flex-wrap justify-content-between align-items-center" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                            <h6 class="fw-bold mb-0 me-2"><i class="bi bi-pie-chart-fill text-success"></i> Module Completion Stats</h6>
                             <!-- New inline local filters -->
                             <div class="d-flex gap-2 mt-2 mt-sm-0">
                                 <input type="text" id="localFilterName" class="form-control form-control-sm border-0 shadow-sm text-dark" placeholder="Name..." style="width: 100px;">
@@ -270,16 +295,24 @@
                                     <option value="">All Grades</option>
                                     <option value="Grade 1">Grade 1</option>
                                     <option value="Grade 2">Grade 2</option>
+                                    <option value="Grade 3">Grade 3</option>
+                                    <option value="Grade 4">Grade 4</option>
+                                    <option value="Grade 5">Grade 5</option>
+                                    <option value="Grade 6">Grade 6</option>
                                 </select>
                                 <select id="localFilterSection" class="form-select form-select-sm border-0 shadow-sm text-dark" style="width: auto;">
                                     <option value="">All Sections</option>
                                     <option value="Section A">Section A</option>
                                     <option value="Section B">Section B</option>
+                                    <option value="Section C">Section C</option>
+                                    <option value="Section D">Section D</option>
                                 </select>
                             </div>
                         </div>
                         <div class="d-flex justify-content-center align-items-center pt-4 pb-4">
-                            <canvas id="teacherClassChart" style="max-height: 200px; max-width: 200px;"></canvas>
+                            <div style="height: 200px; width: 100%; max-width: 350px; position: relative;">
+                                <canvas id="teacherClassChart"></canvas>
+                            </div>
                             <div class="ms-4 text-center">
                                 <h3 class="mb-0 fw-bold text-success display-6" id="chart-stat-active">0%</h3>
                                 <small class="text-muted fw-bold text-uppercase">Participation Rate</small>
@@ -324,7 +357,8 @@
                                 <tr>
                                     <th>Activity Name</th>
                                     <th>Type</th>
-                                    <th class="text-end">Score</th>
+                                    <th class="text-center">Score</th>
+                                    <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="sd-modal-completed-list">
@@ -334,7 +368,129 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-0">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Grade Input Modal (Overrides Score) -->
+    <div class="modal fade" id="manualGradeModal" tabindex="-1" style="z-index: 1060;" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content shadow rounded-4 border-0">
+                <div class="modal-header bg-warning border-0">
+                    <h6 class="modal-title fw-bold text-dark"><i class="bi bi-pencil-square"></i> Set/Override Grade</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="manual-grade-form">
+                        <input type="hidden" id="grade-student-id">
+                        <input type="hidden" id="grade-module-id">
+                        <input type="hidden" id="grade-module-type">
+                        <input type="hidden" id="grade-max-score">
+                        
+                        <p class="small text-muted mb-2">Update the score for: <strong id="grade-module-name" class="text-dark">Activity</strong></p>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">New Score</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control fw-bold text-center" id="grade-new-score" required min="0">
+                                <span class="input-group-text bg-light text-muted fw-bold" id="grade-max-label">/ 10</span>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning w-100 fw-bold shadow-sm" id="btn-save-grade">Save Grade</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grading Reference Table Modal -->
+    <div class="modal fade" id="gradingReferenceModal" tabindex="-1" aria-labelledby="gradingReferenceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-info text-dark border-0">
+                    <h5 class="modal-title fw-bold" id="gradingReferenceModalLabel"><i class="bi bi-info-circle-fill"></i> DepEd Grading Framework (Reference)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold text-secondary text-uppercase mb-3"><i class="bi bi-percent"></i> Subject Weight Distribution</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-bordered table-sm align-middle text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start">Subject Area (Tracks)</th>
+                                    <th>Written Work (WW)</th>
+                                    <th>Perf. Task (PT)</th>
+                                    <th>Quarterly Assess. (QA)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-start fw-medium">Language, AP, EsP, GMRC</td>
+                                    <td>30%</td>
+                                    <td class="fw-bold text-primary">50%</td>
+                                    <td>20%</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start fw-medium">Math, Science</td>
+                                    <td class="fw-bold text-success">40%</td>
+                                    <td class="fw-bold text-success">40%</td>
+                                    <td>20%</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start fw-medium">MAPEH, EPP / TLE</td>
+                                    <td>20%</td>
+                                    <td class="fw-bold text-warning text-dark">60%</td>
+                                    <td>20%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="fw-bold text-secondary text-uppercase mb-3"><i class="bi bi-award"></i> Descriptive Equivalent (Transmuted)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Grading Scale</th>
+                                    <th>Descriptor</th>
+                                    <th class="text-center">Status Badge</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold text-success">90 - 100</td>
+                                    <td>Outstanding (Advancing)</td>
+                                    <td class="text-center"><span class="badge bg-success">Success</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-primary">85 - 89</td>
+                                    <td>Very Satisfactory</td>
+                                    <td class="text-center"><span class="badge bg-primary">Good</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-info text-dark">80 - 84</td>
+                                    <td>Satisfactory</td>
+                                    <td class="text-center"><span class="badge bg-info text-dark">Passing</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-warning text-dark">75 - 79</td>
+                                    <td>Fairly Satisfactory</td>
+                                    <td class="text-center"><span class="badge bg-warning text-dark">Borderline</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-danger">Below 75</td>
+                                    <td>Did Not Meet Expectations</td>
+                                    <td class="text-center"><span class="badge bg-danger">Failing</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Got it</button>
                 </div>
             </div>
         </div>

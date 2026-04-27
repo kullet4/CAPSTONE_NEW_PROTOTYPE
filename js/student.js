@@ -16,6 +16,7 @@ let completedModulesList = [];
 // Gamification Modal Variables
 let currentLessonChunks = [];
 let currentChunkIndex = 0;
+let userAnswers = {};
 let currentLessonXP = 0;
 let currentLessonCard = null;
 let currentModId = null;
@@ -173,6 +174,10 @@ async function loadModules(studentGrade, studentSection) {
                             data-xp="${modData.xpReward || 0}" 
                             data-id="${modId}" 
                             data-title="${modData.title}" 
+                            data-gradingcategory="${modData.gradingCategory}"
+                            data-maxscore="${modData.maxScore}"
+                            data-modtype="${modData.type || 'reading'}"
+                            data-questions="${encodeURIComponent(JSON.stringify(modData.questions || []))}"
                             data-content="${encodeURIComponent(modData.content || "Oops! The teacher forgot to write the lesson.")}">
                             <i class="bi bi-check2-circle fs-5"></i> Review Lesson
                         </button>
@@ -181,6 +186,10 @@ async function loadModules(studentGrade, studentSection) {
                             data-xp="${modData.xpReward || 0}" 
                             data-id="${modId}" 
                             data-title="${modData.title}" 
+                            data-gradingcategory="${modData.gradingCategory}"
+                            data-maxscore="${modData.maxScore}"
+                            data-modtype="${modData.type || 'reading'}"
+                            data-questions="${encodeURIComponent(JSON.stringify(modData.questions || []))}"
                             data-content="${encodeURIComponent(modData.content || "Oops! The teacher forgot to write the lesson.")}">
                             <i class="bi bi-play-circle-fill fs-5"></i> Continue (${progressPercent}%)
                         </button>
@@ -189,6 +198,10 @@ async function loadModules(studentGrade, studentSection) {
                             data-xp="${modData.xpReward || 0}" 
                             data-id="${modId}" 
                             data-title="${modData.title}" 
+                            data-gradingcategory="${modData.gradingCategory}"
+                            data-maxscore="${modData.maxScore}"
+                            data-modtype="${modData.type || 'reading'}"
+                            data-questions="${encodeURIComponent(JSON.stringify(modData.questions || []))}"
                             data-content="${encodeURIComponent(modData.content || "Oops! The teacher forgot to write the lesson.")}">
                             <i class="bi bi-play-circle-fill fs-5"></i> Start Learning
                         </button>
@@ -223,24 +236,38 @@ function startInteractiveLesson(e) {
     const title = btn.getAttribute('data-title');
     const encodedContent = btn.getAttribute('data-content');
     const rawContent = decodeURIComponent(encodedContent);
+    const modType = btn.getAttribute('data-modtype');
     currentLessonXP = parseInt(btn.getAttribute('data-xp'), 10);
     currentLessonCard = btn; // Save reference to update button state later
     
     isReviewMode = completedModulesList.includes(currentModId);
 
-    // Split content into chunks by periods (.) or newlines (\n)
-    // This forces kids to read bite-sized pieces and click "next" (Autonomy)
-    currentLessonChunks = rawContent.split(/(?<=[.!?])\s+|[\n]+/).filter(text => text.trim().length > 0);
-    
-    // Failsafe for very short lessons
-    if(currentLessonChunks.length === 0) currentLessonChunks = ["Let's learn something new!"];
+    // Parse the lesson chunks based on whether it is a reading module or a quiz
+    if (modType === 'quiz') {
+        const encodedQuestions = btn.getAttribute('data-questions');
+        currentLessonChunks = JSON.parse(decodeURIComponent(encodedQuestions));
+        if (currentLessonChunks.length === 0) {
+            currentLessonChunks = [{ question: "Oops! The teacher forgot to add questions.", options: [] }];
+        }
+    } else {
+        // Split content into chunks by periods (.) or newlines (\n) if it's reading material
+        if(rawContent && rawContent !== "Oops! The teacher forgot to write the lesson." && rawContent !== "undefined") {
+            currentLessonChunks = rawContent.split(/(?<=[.!?])\s+|[\n]+/).filter(text => text.trim().length > 0);
+        } else {
+            currentLessonChunks = ["Let's learn something new!"];
+        }
+        
+        // Failsafe for very short reading lessons
+        if(currentLessonChunks.length === 0) currentLessonChunks = ["Let's learn something new!"];
+    }
 
     // Load saved progress if not reviewing
     if (isReviewMode) {
         currentChunkIndex = 0;
+        userAnswers = {};
     } else {
-        currentChunkIndex = parseInt(localStorage.getItem('elms_progress_' + currentModId)) || 0;
-        if (currentChunkIndex >= currentLessonChunks.length) currentChunkIndex = 0;
+        currentChunkIndex = 0; // Defaulting to 0 for quizzes until we implement saved answers
+        userAnswers = {};
     }
     
     // Prep Modal UI
@@ -255,7 +282,35 @@ function startInteractiveLesson(e) {
 
 // Update the chunk text and progress bar
 function updateLessonChunk() {
-    lessonChunkText.textContent = currentLessonChunks[currentChunkIndex];
+    const modType = currentLessonCard ? currentLessonCard.getAttribute('data-modtype') : 'reading';
+    
+    if (modType === 'quiz') {
+        const qData = currentLessonChunks[currentChunkIndex];
+        let optionsHTML = '';
+        if (qData.options && Array.isArray(qData.options)) {
+            qData.options.forEach((opt, idx) => {
+                const isSelected = userAnswers[currentChunkIndex] === idx ? 'checked' : '';
+                optionsHTML += `
+                    <div class="form-check text-start mb-3 fs-5 ms-3">
+                        <input class="form-check-input border-primary" type="radio" name="q-${currentChunkIndex}" id="q-${currentChunkIndex}-opt-${idx}" value="${idx}" ${isSelected}>
+                        <label class="form-check-label ms-2" for="q-${currentChunkIndex}-opt-${idx}">${opt}</label>
+                    </div>
+                `;
+            });
+        }
+
+        lessonChunkText.innerHTML = `
+            <div class="w-100 text-start">
+                <span class="badge bg-primary mb-3">Question ${currentChunkIndex + 1} of ${currentLessonChunks.length}</span>
+                <h4 class="mb-4 fw-bold text-dark lh-base" style="font-size: 1.4rem;">${qData.question || 'Missing question text'}</h4>
+                <div class="d-flex flex-column gap-2">
+                    ${optionsHTML}
+                </div>
+            </div>
+        `;
+    } else {
+        lessonChunkText.textContent = currentLessonChunks[currentChunkIndex];
+    }
     
     // Toggle Back button
     if(currentChunkIndex > 0) {
@@ -292,7 +347,15 @@ function updateLessonChunk() {
 }
 
 // Next Button Handler
-lessonNextBtn.addEventListener('click', () => {
+lessonNextBtn.addEventListener('click', () => {    const modType = currentLessonCard ? currentLessonCard.getAttribute('data-modtype') : 'reading';
+
+    if (modType === 'quiz') {
+        const checkedOption = document.querySelector(`input[name="q-${currentChunkIndex}"]:checked`);
+        if (!checkedOption) {
+            alert("Please select an answer to continue.");
+            return;
+        }
+    }
     if(currentChunkIndex < currentLessonChunks.length - 1) {
         currentChunkIndex++;
         animateChunkChange();
@@ -324,15 +387,87 @@ lessonFinishBtn.addEventListener('click', async () => {
         return;
     }
 
+    const modType = currentLessonCard ? currentLessonCard.getAttribute('data-modtype') : 'reading';
+
+    // Validate that questions are answered before submitting a quiz
+    if (modType === 'quiz') {
+        const checkedOption = document.querySelector(`input[name="q-${currentChunkIndex}"]:checked`);
+        if (!checkedOption) {
+            alert("Please select an answer before finishing the quiz!");
+            return;
+        }
+    }
+
     lessonFinishBtn.disabled = true;
     lessonFinishBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Verifying...`;
     
     try {
-        // Safe database update
-        await updateDoc(userDocRef, {
-            xp: increment(currentLessonXP),
-            completedModules: arrayUnion(currentModId)
-        });
+        if (modType === 'quiz') {
+            // === CALCULATE SCORE WITH SCALING ===
+            let rawCorrect = 0;
+            currentLessonChunks.forEach((q, idx) => {
+                const checkedOption = document.querySelector(`input[name="q-${idx}"]:checked`);
+                if (checkedOption) {
+                    const userChoice = parseInt(checkedOption.value, 10);
+                    if(userChoice === q.correctIndex) {
+                        rawCorrect++;
+                    }
+                }
+            });
+
+            // Scale it to the expected Max Score set by the teacher
+            const maxItems = currentLessonChunks.length;
+            let expectedMaxScore = maxItems;
+            if (currentLessonCard.dataset.maxscore && currentLessonCard.dataset.maxscore !== "undefined") {
+                 expectedMaxScore = parseFloat(currentLessonCard.dataset.maxscore);
+            }
+            
+            // Example: (5 / 10) * 100 = 50
+            const scaledScore = expectedMaxScore > 0 ? (rawCorrect / maxItems) * expectedMaxScore : rawCorrect;
+
+            // Ensure student has default scores 
+            const userData = (await getDoc(userDocRef)).data();
+            let scores = userData.scores || { wwRaw: 0, wwMax: 0, ptRaw: 0, ptMax: 0, qaRaw: 0, qaMax: 0 };
+            const gradingCategory = currentLessonCard.dataset.gradingcategory || 'none';
+            
+            // Add to DepEd Category if not 'none'
+            if (gradingCategory === 'ww') {
+                scores.wwRaw += scaledScore;
+                scores.wwMax += expectedMaxScore;
+            } else if (gradingCategory === 'pt') {
+                scores.ptRaw += scaledScore;
+                scores.ptMax += expectedMaxScore;
+            } else if (gradingCategory === 'qa') {
+                scores.qaRaw += scaledScore;
+                scores.qaMax += expectedMaxScore;
+            }
+
+            // Safe database update
+            await updateDoc(userDocRef, {
+                xp: increment(currentLessonXP),
+                completedModules: arrayUnion(currentModId),
+                scores: scores
+            });
+
+            // Display Result immediately
+            const lessonContentEl = document.getElementById('lesson-chunk-text').parentElement;
+            lessonContentEl.innerHTML = `
+                <div class="text-center w-100">
+                    <h1 class="display-1 mb-3">🎉</h1>
+                    <h2 class="text-success fw-bold">Quiz Complete!</h2>
+                    <h3 class="display-3 fw-bold text-primary mb-3">${scaledScore.toFixed(0)} / ${expectedMaxScore}</h3>
+                    <p class="fs-5 text-muted mb-4">You got ${rawCorrect} out of ${maxItems} items correct.</p>
+                    <div class="spinner-border text-primary" role="status"></div><br>
+                    <small class="text-muted mt-2 d-inline-block">Syncing score to DepEd Grader...</small>
+                </div>
+            `;
+        } else {
+            // Safe database update for reading material (just XP)
+            await updateDoc(userDocRef, {
+                xp: increment(currentLessonXP),
+                completedModules: arrayUnion(currentModId)
+            });
+        }
         
         // Remove locally saved progress
         localStorage.removeItem('elms_progress_' + currentModId);

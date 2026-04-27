@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
 // DOM Elements
 const userGreeting = document.getElementById('user-greeting');
@@ -160,6 +160,7 @@ if(createQuizForm) {
         const section = document.getElementById('quiz-section').value || 'All';
         const subject = document.getElementById('quiz-subject').value;
         const gradingType = document.getElementById('quiz-grading-type').value;
+        const expectedMaxScore = parseInt(document.getElementById('quiz-max-score').value, 10);
         const xp = parseInt(document.getElementById('quiz-xp').value, 10);
         const submitBtn = createQuizForm.querySelector('button[type="submit"]');
 
@@ -191,7 +192,7 @@ if(createQuizForm) {
                 subject: subject,
                 gradingCategory: gradingType,  // 'ww', 'pt', 'qa', 'none'
                 questions: questions,          // Array of M/C questions
-                maxScore: questions.length,    // Derived from quiz length
+                maxScore: expectedMaxScore || questions.length,    // Updated to use the custom expected grade set by teacher
                 xpReward: xp,
                 teacherId: auth.currentUser.uid,
                 teacherName: currentUserDoc.name || 'Instructor',
@@ -326,7 +327,7 @@ async function loadStudentData() {
                 
                 const completedMods = studentData.completedModules || [];
                 if (completedMods.length === 0) {
-                    listEl.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3">No activities completed yet.</td></tr>`;
+                    listEl.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No activities completed yet.</td></tr>`;
                 } else {
                     // Loop backwards so newest activities are on top
                     completedMods.slice().reverse().forEach(mod => {
@@ -340,11 +341,20 @@ async function loadStudentData() {
                             ? `${mod.score || 0}/${mod.maxScore}` 
                             : `<i class="bi bi-check-circle-fill text-success"></i>`;
                             
+                        const actionBtn = (mod.maxScore && mod.maxScore > 0) 
+                            ? `<button class="btn btn-sm btn-outline-warning text-dark px-2 py-0 fw-bold border-2 shadow-sm"
+                                       title="Override Score"
+                                       onclick="window.openGradeEditor('${docSnap.id}', '${mod.moduleId}', '${mod.title || 'Unknown Activity'}', ${mod.score || 0}, ${mod.maxScore})">
+                                   <i class="bi bi-pencil-square"></i> Edit
+                               </button>`
+                            : `<span class="text-muted small">N/A</span>`;
+
                         listEl.innerHTML += `
                             <tr>
                                 <td class="fw-medium text-dark">${mod.title || 'Unknown Activity'}</td>
                                 <td><span class="badge ${badgeColor}">${modType}</span></td>
-                                <td class="text-end fw-bold text-success">${scoreTxt}</td>
+                                <td class="text-center fw-bold text-success">${scoreTxt}</td>
+                                <td class="text-end">${actionBtn}</td>
                             </tr>
                         `;
                     });
@@ -445,7 +455,14 @@ function renderTeacherChart(active, inactive) {
             maintainAspectRatio: false,
             cutout: '70%', // makes it a nice thin ring
             plugins: {
-                legend: { display: false },
+                legend: { 
+                    display: true, 
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                },
                 tooltip: {
                     callbacks: {
                         label: function(context) {
@@ -464,3 +481,91 @@ logoutBtn.addEventListener('click', () => {
         window.location.href = 'index.html';
     });
 });
+
+// ==========================================
+// MANUAL GRADING SYSTEM (TEACHER OVERRIDE)
+// ==========================================
+const manualGradeModalEl = document.getElementById('manualGradeModal');
+const manualGradeModal = manualGradeModalEl ? new bootstrap.Modal(manualGradeModalEl) : null;
+const manualGradeForm = document.getElementById('manual-grade-form');
+
+window.openGradeEditor = (studentId, moduleId, moduleName, currentScore, maxScore) => {
+    document.getElementById('grade-student-id').value = studentId;
+    document.getElementById('grade-module-id').value = moduleId;
+    document.getElementById('grade-module-name').textContent = moduleName;
+    document.getElementById('grade-new-score').value = currentScore;
+    document.getElementById('grade-new-score').max = maxScore;
+    document.getElementById('grade-max-score').value = maxScore;
+    document.getElementById('grade-max-label').textContent = `/ ${maxScore}`;
+    
+    if (manualGradeModal) {
+        // Hide the main details modal briefly so they don't overlap awkwardly
+        if (sdModal) sdModal.hide();
+        manualGradeModal.show();
+    }
+};
+
+if (manualGradeForm) {
+    manualGradeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const saveBtn = document.getElementById('btn-save-grade');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Saving...`;
+
+        const sId = document.getElementById('grade-student-id').value;
+        const mId = document.getElementById('grade-module-id').value;
+        const newScore = parseInt(document.getElementById('grade-new-score').value, 10);
+        
+        try {
+            const studentRef = doc(db, 'users', sId);
+            const studentSnap = await getDoc(studentRef);
+            
+            if (studentSnap.exists()) {
+                const data = studentSnap.data();
+                const completedMods = data.completedModules || [];
+                const scores = data.scores || { wwRaw: 0, wwMax: 100, ptRaw: 0, ptMax: 100, qaRaw: 0, qaMax: 100 };
+                
+                let foundMod = completedMods.find(m => m.moduleId === mId);
+                
+                if (foundMod) {
+                    const oldScore = foundMod.score || 0;
+                    const cat = foundMod.gradingCategory || 'ww';
+                    
+                    // Deduct old score and add new score to raw totals
+                    if (cat === 'ww') scores.wwRaw = Math.max(0, scores.wwRaw - oldScore + newScore);
+                    else if (cat === 'pt') scores.ptRaw = Math.max(0, scores.ptRaw - oldScore + newScore);
+                    else if (cat === 'qa') scores.qaRaw = Math.max(0, scores.qaRaw - oldScore + newScore);
+
+                    // Update the specific module score
+                    foundMod.score = newScore;
+                    
+                    // Push to Firebase
+                    await updateDoc(studentRef, {
+                        completedModules: completedMods,
+                        scores: scores
+                    });
+                    
+                    alert("Grade updated successfully!");
+                    manualGradeModal.hide();
+                    
+                    // Reload table to reflect new data
+                    await loadStudentData();
+                } else {
+                    alert("Module not found in student's completed list.");
+                }
+            }
+        } catch (err) {
+            console.error("Error updating grade: ", err);
+            alert("Error saving grade.");
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = `Save Grade`;
+        }
+    });
+    
+    // When Grade Modal closes, you might want to re-open the Student Details modal? Let's leave that optional.
+    manualGradeModalEl.addEventListener('hidden.bs.modal', () => {
+        // Optional: Re-open sdModal
+    });
+}
